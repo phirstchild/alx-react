@@ -1,2 +1,1 @@
-# alx-react
-This is my Alx React Repository
+## 0x01. React intro
