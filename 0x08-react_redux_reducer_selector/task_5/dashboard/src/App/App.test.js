@@ -1,16 +1,26 @@
 import React from 'react';
 import { shallow, mount } from 'enzyme';
-import { jest } from '@jest/globals';
 import App from './App';
 import { StyleSheetTestUtils } from 'aphrodite';
-import { AppContext, user, logOut } from './AppContext';
+import { mapStateToProps } from './App';
+import { fromJS } from 'immutable';
+import configureStore from 'redux-mock-store'
+import { initialState } from '../reducers/rootReducer';
+import { Provider } from 'react-redux';
+import thunk from 'redux-thunk';
+import fetchMock from 'fetch-mock';
+
+fetchMock.mock('*', 200);
+const mockStore = configureStore([thunk]);
 
 describe('Test App.js', () => {
   let wrapper;
+  let store;
 
   beforeEach(() => {
     StyleSheetTestUtils.suppressStyleInjection();
-    wrapper = shallow(<App />);
+    store = mockStore(initialState);
+    wrapper = mount(<Provider store={store} ><App/></Provider>);
   });
 
   it('Renders App without crashing', () => {
@@ -25,10 +35,6 @@ describe('Test App.js', () => {
     expect(wrapper.find("Header")).toHaveLength(1);
   });
 
-  it('App component contains Login component', () => {
-    expect(wrapper.find("Login")).toHaveLength(1);
-  });
-
   it('App component contains Footer component', () => {
     expect(wrapper.find("Footer")).toHaveLength(1);
   });
@@ -38,140 +44,38 @@ describe('Test App.js', () => {
   });
 });
 
-describe("Testing <App isLoggedIn={true} />", () => {
-  let wrapper;
-
-  beforeEach(() => {
-    StyleSheetTestUtils.suppressStyleInjection();
-    wrapper = shallow(<App/>);
-  });
-
-  it("the Login component is  included", () => {
-    expect(wrapper.find('Login')).toHaveLength(1);
-  });
-
-  it("the CourseList component is included", () => {
-    expect(wrapper.find('CourseList').exists());
+describe('Testing mapStateToProps', () => {
+  it('test that verify that the function returns the right object', () => {
+    let state = {
+      ui: fromJS({
+        isUserLoggedIn: true,
+      }),
+    };
+    expect(mapStateToProps(state)).toEqual(expect.objectContaining({ isLoggedIn: true }));
   });
 });
 
-describe("Testing <App logOut={function} />", () => {
-  beforeEach(() => {
-    StyleSheetTestUtils.suppressStyleInjection();
+describe("Testing rootReducer", () => {
+  it("mapStateToProps returns the right object from user Login", () => {
+    let state = {
+      ui: fromJS({
+        isUserLoggedIn: true,
+      }),
+    };
+
+    const result = mapStateToProps(state);
+
+    expect(result).toEqual({ isLoggedIn: true });
   });
+  it("mapStateToProps returns the right object from display Drawer", () => {
+    let state = {
+      ui: fromJS({
+        isNotificationDrawerVisible: true,
+      }),
+    };
 
-  it("verify that when the keys control and h are pressed the logOut function, passed as a prop, is called and the alert function is called with the string Logging you out", () => {
-    const wrapper = mount(<App logOut={()=>{console.log("ctrl and h are pressed")}}/>);
-    window.alert = jest.fn();
-    const inst = wrapper.instance();
-    const logout = jest.spyOn(inst, 'logOut');
-    const alert = jest.spyOn(window, 'alert');
-    const event = new KeyboardEvent('keydown', {bubbles:true, ctrlKey: true, key: 'h'});
-    document.dispatchEvent(event);
-    expect(alert).toBeCalledWith("Logging you out");
-    expect(logout).toBeCalled();
-    alert.mockRestore();
+    const result = mapStateToProps(state);
+
+    expect(result).toEqual({ displayDrawer: true });
   });
-});
-
-describe("Testing App Component's State />", () => {
-  let wrapper;
-
-  beforeEach(() => {
-    StyleSheetTestUtils.suppressStyleInjection();
-    wrapper = shallow(<App/>);
-  });
-
-  afterEach(() => {
-		jest.clearAllMocks();
-	});
-
-  it('check if default value of displayDrawer in state is false', () => {
-    expect(wrapper.state('displayDrawer')).toBe(false);
-  });
-
-  it('Verify that after calling handleDisplayDrawer, the state displayDrawer should now be true', () => {
-    wrapper.instance().handleDisplayDrawer();
-    expect(wrapper.state('displayDrawer')).toBe(true);
-  });
-
-  it('verify that after calling handleHideDrawer, the state displayDrawer is updated to be false', () => {
-    wrapper.instance().handleHideDrawer();
-    expect(wrapper.state('displayDrawer')).toBe(false);
-  });
-
-  it(`Tests that the logIn function updates user's state correctly`, () => {
-		wrapper = mount(
-			<AppContext.Provider value={{ user, logOut }}>
-				<App />
-			</AppContext.Provider>
-		);
-
-		const myUser = {
-			email: 'testy@gmail.com',
-			password: 'testy',
-			isLoggedIn: true,
-		}
-
-		expect(wrapper.state().user).toEqual(user);
-		const instance = wrapper.instance();
-		instance.logIn(myUser.email, myUser.password);
-		expect(wrapper.state().user).toEqual(myUser);
-		wrapper.unmount();
-	})
-
-	it(`Tests that the logOut function updates user's state correctly`, () => {
-		wrapper = mount(
-			<AppContext.Provider value={{ user, logOut }}>
-				<App />
-			</AppContext.Provider>
-		);
-
-		const myUser = {
-			email: 'testy@gmail.com',
-			password: 'testy',
-			isLoggedIn: true,
-		}
-
-		expect(wrapper.state().user).toEqual(user);
-		const instance = wrapper.instance();
-		instance.logOut();
-		expect(wrapper.state().user).toEqual(user);
-		wrapper.unmount();
-	})
-
-  it(`verify that markNotificationAsRead works as intended,
-	deletes the notification with the passed id from the listNotifications array`, () => {
-		const context = {
-			user: {
-				...user,
-			},
-			logOut: jest.fn(),
-			listNotifications: [
-				{ id: 1, type: "default", value: "New course available" },
-				{ id: 2, type: "urgent", value: "New resume available" },
-				{ id: 3, html: { __html: jest.fn() }, type: "urgent" }
-			]
-		}
-
-		const wrapper = mount(
-			<AppContext.Provider value={context}>
-				<App />
-			</AppContext.Provider>
-		);
-
-		const instance = wrapper.instance();
-
-		instance.markNotificationAsRead(3);
-
-		expect(wrapper.state().listNotifications).toEqual([
-			{ id: 1, type: "default", value: "New course available" },
-			{ id: 2, type: "urgent", value: "New resume available" }
-		]);
-	
-		expect(wrapper.state().listNotifications.length).toBe(2);
-		expect(wrapper.state().listNotifications[3]).toBe(undefined);
-
-		wrapper.unmount();
-	})
 });

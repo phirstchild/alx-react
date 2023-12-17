@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import Header from '../Header/Header';
 import Footer from '../Footer/Footer';
 import Notification from '../Notifications/Notifications';
@@ -7,9 +8,10 @@ import CourseList from '../CourseList/CourseList';
 import BodySectionWithMarginBottom from '../BodySection/BodySectionWithMarginBottom';
 import BodySection from '../BodySection/BodySection';
 import { getLatestNotification } from '../utils/utils';
-import PropTypes from 'prop-types';
 import { StyleSheet, css } from 'aphrodite';
 import { user, AppContext } from './AppContext';
+import { connect } from 'react-redux';
+import * as uiAC from '../actions/uiActionCreators';
 
 
 class App extends React.Component {
@@ -23,64 +25,17 @@ class App extends React.Component {
       {id: 3, name: 'React', credit: 40}
     ];
 
-    this.handleDisplayDrawer = this.handleDisplayDrawer.bind(this);
-    this.handleHideDrawer = this.handleHideDrawer.bind(this);
-    this.logIn = this.logIn.bind(this);
-    this.logOut = this.logOut.bind(this);
-    this.markNotificationAsRead = this.markNotificationAsRead.bind(this);
-
     this.state = {
-      displayDrawer: false,
-      user: user,
-      logOut: this.logOut,
-      listNotifications: [
-        {id: 1, value: "New course available", type: "default"},
-        {id: 2, value: "New resume available", type: "urgent"},
-        {id: 3, html: {__html: getLatestNotification()}, type: "urgent"},
-      ]
+      user: user
     };
 
-  }
-
-  markNotificationAsRead(id) {
-    const newList = this.state.listNotifications.filter(not => not.id !== id);
-    this.setState({ listNotifications: newList });
-  }
-
-  logIn(email, password) {
-		this.setState({
-			user: {
-				email,
-				password,
-				isLoggedIn: true
-			}
-		});
-	}
-
-  logOut() {
-		this.setState({
-			user: user
-	  });
-  }
-
-
-  handleDisplayDrawer() {
-    this.setState({
-      displayDrawer: true
-    });
-  }
-
-  handleHideDrawer() {
-    this.setState({
-      displayDrawer: false
-    });
   }
 
   handleKeyDown(e) {
     if (e.ctrlKey && e.key === 'h') {
       e.preventDefault();
       alert("Logging you out");
-      this.logOut();
+      this.props.logout();
     }  
   }
 
@@ -96,22 +51,20 @@ class App extends React.Component {
     return (
       <AppContext.Provider value={{
         user: this.state.user,
-        logOut: this.state.logOut
+        logOut: this.props.logout
       }}>
         <React.Fragment>
           <Notification
-            listNotifications={this.state.listNotifications}
-            markNotificationAsRead={this.markNotificationAsRead}
-            displayDrawer={this.state.displayDrawer}
-            handleDisplayDrawer={this.handleDisplayDrawer}
-            handleHideDrawer={this.handleHideDrawer}
+            displayDrawer={this.props.displayDrawer}
+            handleDisplayDrawer={this.props.displayNotificationDrawer}
+            handleHideDrawer={this.props.hideNotificationDrawer}
           />
           <div className={css(bodyStyles.App)}>
             <Header />
-            {this.state.user.isLoggedIn ?
+            {this.props.isLoggedIn ?
               <BodySectionWithMarginBottom title="Course list"><CourseList listCourses={this.listCourses}/></BodySectionWithMarginBottom>
             : 
-              <BodySectionWithMarginBottom title="Log in to continue"><Login logIn={this.logIn}/></BodySectionWithMarginBottom>
+              <BodySectionWithMarginBottom title="Log in to continue"><Login logIn={this.props.login}/></BodySectionWithMarginBottom>
             }
             <BodySection title="News from the School">
               <p>Random Text</p>
@@ -126,6 +79,7 @@ class App extends React.Component {
   }
 }
 
+
 const bodyStyles = StyleSheet.create({
   App: {
     position: 'relative',
@@ -134,8 +88,8 @@ const bodyStyles = StyleSheet.create({
 });
 
 const footerStyles = StyleSheet.create({
-	footer: {
-		display: 'flex',
+  footer: {
+    display: 'flex',
 		flexDirection: 'row',
 		justifyContent: 'center',
 		alignItems: 'center',
@@ -145,4 +99,28 @@ const footerStyles = StyleSheet.create({
 	}
 });
 
-export default App;
+App.propTypes = {
+  isLoggedIn: PropTypes.bool,
+  displayDrawer: PropTypes.bool
+};
+
+App.defaultProps = {
+  isLoggedIn: false,
+  displayDrawer: false
+};
+
+export function mapStateToProps(state) {
+  return {
+    isLoggedIn: state.ui.get('isUserLoggedIn'),
+    displayDrawer: state.ui.get('isNotificationDrawerVisible')
+  };
+}
+
+const mapDispatchToProps = {
+  displayNotificationDrawer: uiAC.displayNotificationDrawer,
+  hideNotificationDrawer: uiAC.hideNotificationDrawer,
+  login: uiAC.loginRequest,
+  logout: uiAC.logout
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(App);

@@ -51,7 +51,7 @@ export function loginRequest(email, password) {
       if (res.ok) {
         dispatch(loginSuccess());
       } else {
-        throw new Error('failed');
+        throw new Error('Login Failed!');
       }
     })
     .catch((err) => dispatch(loginFailure()));

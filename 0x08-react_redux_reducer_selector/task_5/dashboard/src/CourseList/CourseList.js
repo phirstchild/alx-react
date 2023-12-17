@@ -41,7 +41,7 @@ CourseList.defaultProps = {
   listCourses: []
 };
 
-CourseList.propType = {
+CourseList.propTypes = {
   listCourses: PropType.arrayOf(CourseShape)
 };
 
